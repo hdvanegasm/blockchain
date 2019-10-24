@@ -3,7 +3,7 @@ class Blockchain:
     pass
 
 class Block:
-    pass
+    nonce = 0
 
 class Transaction:
     pass
