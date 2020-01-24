@@ -1,6 +1,9 @@
 import hashlib
 import random
+
+
 class Blockchain:
+
     def __init__(self, difficulty, blocks = []):
         first_transaction = Transaction("a988a7d0a8dd8")
         genesis_block = Block(first_transaction, 0, "")
@@ -9,9 +12,13 @@ class Blockchain:
         self.blocks = blocks
         self.difficulty = difficulty
 
+    '''
+    Adds block only if the block was valid.
+    '''
     def add_block(self, block):
         if block.get_hash().startswith("0" * self.difficulty):
             self.blocks.append(block)
+
 
 class Block:
     def __init__(self, transaction, nonce, prev_block_hash):
@@ -28,9 +35,11 @@ class Block:
         hash_manager.update(bytes(block_str, encoding='utf-8'))
         return hash_manager.hexdigest()
 
+
 class Transaction:
     def __init__(self, hash_code):
         self.hash_code = hash_code
+
 
 def mine_block(transaction, blockchain):
     nonce = 0
@@ -40,13 +49,17 @@ def mine_block(transaction, blockchain):
 
         if new_block.get_hash().startswith("0" * blockchain.difficulty):
             print("Nonce found:", nonce)
+            print("Block hash:", new_block.get_hash())
+            print("Prev block hash:", new_block.prev_block_hash)
+            print(new_block.__dict__)
             return new_block
 
         nonce += 1
 
+
 if __name__ == "__main__":
-    transaccion = Transaction("skfsjdglkjfn")
-    blockchain = Blockchain(5)
+    transaccion = Transaction("skfajdglkjfn")
+    blockchain = Blockchain(difficulty = 6)
 
     block = mine_block(transaccion, blockchain)
 
