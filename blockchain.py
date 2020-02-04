@@ -56,4 +56,6 @@ if __name__ == "__main__":
 
     blockchain.add_block(block)
 
+    print(block.__dict__)
+
     print(len(blockchain.blocks))
