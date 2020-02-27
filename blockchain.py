@@ -1,5 +1,6 @@
 import hashlib
-import random
+import time
+
 class Blockchain:
     def __init__(self, difficulty, blocks = []):
         first_transaction = Transaction("a988a7d0a8dd8")
@@ -39,6 +40,8 @@ def mine_block(transaction, blockchain):
         new_block = Block(transaction, nonce, hash_prev_block)
 
         if new_block.get_hash().startswith("0" * blockchain.difficulty):
+            print("Hash new block:", new_block.get_hash())
+            print("New block:", new_block.__dict__)
             print("Nonce found:", nonce)
             return new_block
 
@@ -46,9 +49,13 @@ def mine_block(transaction, blockchain):
 
 if __name__ == "__main__":
     transaccion = Transaction("skfsjdglkjfn")
-    blockchain = Blockchain(5)
+    blockchain = Blockchain(difficulty = 6)
 
+    initial_time = time.time()
     block = mine_block(transaccion, blockchain)
+    time_spent = time.time() - initial_time
+
+    print("Time required:", time_spent, "seconds")
 
     blockchain.add_block(block)
 
