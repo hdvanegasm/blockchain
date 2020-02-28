@@ -7,7 +7,7 @@ class Blockchain:
         self.blocks = blocks
         self.difficulty = difficulty
 
-        first_transaction = Transaction("a988a7d0a8dd8")
+        first_transaction = Transaction(0, 0)
         genesis_block = mine_block(first_transaction, self)
         self.add_block(genesis_block)
 
@@ -33,8 +33,9 @@ class Block:
 
 
 class Transaction:
-    def __init__(self, hash_code):
-        self.hash_code = hash_code
+    def __init__(self, input, output):
+        self.input = input
+        self.output = output
 
 
 def mine_block(transaction, blockchain):
@@ -54,13 +55,13 @@ def mine_block(transaction, blockchain):
 
 
 if __name__ == "__main__":
-    transaccion = Transaction("skfsjdglkjfn")
-    blockchain = Blockchain(3)
+    transaction = Transaction(input=31, output=30)
+    blockchain = Blockchain(difficulty=5)
 
-    block = mine_block(transaccion, blockchain)
-
+    block = mine_block(transaction, blockchain)
     blockchain.add_block(block)
 
     print(block.__dict__)
+    print("Bitcoin earned:", transaction.input - transaction.output)
 
     print(len(blockchain.blocks))
