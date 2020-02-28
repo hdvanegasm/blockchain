@@ -56,12 +56,13 @@ def mine_block(transaction, blockchain):
 
 if __name__ == "__main__":
     transaction = Transaction(input=31, output=30)
-    blockchain = Blockchain(difficulty=5)
-
-    block = mine_block(transaction, blockchain)
-    blockchain.add_block(block)
-
-    print(block.__dict__)
-    print("Bitcoin earned:", transaction.input - transaction.output)
-
-    print(len(blockchain.blocks))
+    print(transaction.__dict__)
+    # blockchain = Blockchain(difficulty=5)
+    #
+    # block = mine_block(transaction, blockchain)
+    # blockchain.add_block(block)
+    #
+    # print(block.__dict__)
+    # print("Bitcoin earned:", transaction.input - transaction.output)
+    #
+    # print(len(blockchain.blocks))
