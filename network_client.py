@@ -26,7 +26,7 @@ class Client(object):
         0x11 - New peers
         0x12 - New mined block
         """
-        self.socket = self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
         # Make the connection
@@ -59,13 +59,17 @@ class Client(object):
                 print('\t--' + str(error))
                 break
 
-    # TODO Correct when a peer that is not the server is disconnected
     def send_message(self):
         while True:
             input_command = input()
-            if input_command.startswith("new_tx"):
+            if input_command.startswith("cmd_new_tx"):
                 input_command_split = input_command.split()
-                transaction = Transaction(input=int(input_command_split[1]), output=int(input_command_split[2]))
+                input_btc = int(input_command_split[1])
+                output_btc = int(input_command_split[2])
+                source = int(input_command_split[3])
+                destination = int(input_command_split[4])
+
+                transaction = Transaction(input_btc, output_btc)
                 message = "\x10" + transaction.__dict__.__str__()
             else:
                 message = input_command

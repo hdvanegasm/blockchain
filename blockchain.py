@@ -1,4 +1,4 @@
-import hashlib
+from Crypto.Hash import SHA256
 
 
 class Blockchain:
@@ -26,9 +26,8 @@ class Block:
         dictionary['transaction'] = self.transaction.__dict__
         block_str = str(dictionary)
 
-        hash_manager = hashlib.sha256()
-        hash_manager.update(bytes(block_str, encoding='utf-8'))
-        return hash_manager.hexdigest()
+        hash_object = SHA256.new(data=bytes(block_str, encoding='utf-8'))
+        return hash_object.hexdigest()
 
 
 class Transaction:
@@ -39,7 +38,7 @@ class Transaction:
     def fee(self):
         return self.input - self.output
 
-    def validate():
+    def validate(self):
         pass
 
 
@@ -62,7 +61,7 @@ def mine_block(transaction, blockchain):
 if __name__ == "__main__":
     transaction = Transaction(input=31, output=30)
     print(transaction.__dict__)
-    
+
     # blockchain = Blockchain(difficulty=5)
     #
     # block = mine_block(transaction, blockchain)
