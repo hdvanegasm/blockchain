@@ -38,6 +38,7 @@ class Transaction:
     def fee(self):
         return self.input - self.output
 
+    # TODO implement validation of transactions
     def validate(self):
         pass
 

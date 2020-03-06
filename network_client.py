@@ -6,7 +6,7 @@ import socket
 import sys
 import threading
 from blockchain import Transaction
-
+from Crypto.PublicKey import ECC
 
 class P2PNetwork(object):
     peers = ['127.0.0.1']
@@ -19,13 +19,15 @@ def update_peers(peers_string):
 class Client(object):
 
     def __init__(self, address):
-
         """
+        Initialization method for Client class
+
         Convention:
         0x10 - New Transaction
         0x11 - New peers
         0x12 - New mined block
         """
+
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
@@ -35,7 +37,7 @@ class Client(object):
         self.peers = []
         print('==> Connected to server.')
 
-        self.username = input("Username:")
+        self.generate_key_pair()
 
         client_listener_thread = threading.Thread(target=self.send_message)
         client_listener_thread.start()
@@ -58,6 +60,27 @@ class Client(object):
                 print("==> Server disconnected.")
                 print('\t--' + str(error))
                 break
+
+    def generate_key_pair(self):
+        """
+        Generate key pairs for this client using elliptic curves, in particular, it uses secp256r1 elliptic curve
+        """
+        print("==> Generating key pairs.")
+
+        route_private_key = "private_keys/" + self.socket.getsockname()[1] + "_private_key.pem"
+        route_public_key = "public_keys/" + self.socket.getsockname()[1] + "_public_key.pem"
+
+        key = ECC.generate(curve="secp256r1")
+        file_private_key = open(route_private_key, "wt")
+        file_private_key.write(key.export_key(format="PEM"))
+
+        file_public_key = open(route_public_key, "wt")
+        file_public_key.write(key.public_key().export_key(format="PEM"))
+
+        file_private_key.close()
+        file_public_key.close()
+
+        print("==> Key pairs generated.")
 
     def send_message(self):
         while True:
@@ -157,3 +180,8 @@ class Server(object):
             connection.send(bytes('\x11' + peer_list, 'utf-8'))
 
         print('==> Peers sent.')
+
+
+class Miner(object):
+    # TODO implement Miner
+    pass
