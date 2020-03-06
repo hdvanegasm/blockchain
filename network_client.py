@@ -67,8 +67,8 @@ class Client(object):
         """
         print("==> Generating key pairs.")
 
-        route_private_key = "private_keys/" + self.socket.getsockname()[1] + "_private_key.pem"
-        route_public_key = "public_keys/" + self.socket.getsockname()[1] + "_public_key.pem"
+        route_private_key = "private_keys/" + str(self.socket.getsockname()[1]) + "_private_key.pem"
+        route_public_key = "public_keys/" + str(self.socket.getsockname()[1]) + "_public_key.pem"
 
         key = ECC.generate(curve="secp256r1")
         file_private_key = open(route_private_key, "wt")
@@ -77,10 +77,9 @@ class Client(object):
         file_public_key = open(route_public_key, "wt")
         file_public_key.write(key.public_key().export_key(format="PEM"))
 
-        file_private_key.close()
-        file_public_key.close()
-
         print("==> Key pairs generated.")
+        print("\t" + route_private_key)
+        print("\t" + route_public_key)
 
     def send_message(self):
         while True:

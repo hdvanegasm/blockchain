@@ -16,7 +16,7 @@ def app():
                     pass
 
                 # If everyone try to be server
-                if random.randint(1, 20) == 1:
+                if random.randint(1, 5) == 1:
                     try:
                         server = Server(byte_size=1024)
                     except KeyboardInterrupt:
