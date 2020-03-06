@@ -20,6 +20,12 @@ class Client(object):
 
     def __init__(self, address):
 
+        """
+        Convention:
+        0x10 - New Transaction
+        0x11 - New peers
+        0x12 - New mined block
+        """
         self.socket = self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
@@ -28,6 +34,8 @@ class Client(object):
         self.byte_size = 1024
         self.peers = []
         print('==> Connected to server.')
+
+        self.username = input("Username:")
 
         client_listener_thread = threading.Thread(target=self.send_message)
         client_listener_thread.start()

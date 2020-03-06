@@ -6,7 +6,7 @@ class Blockchain:
         self.blocks = blocks
         self.difficulty = difficulty
 
-        first_transaction = Transaction(0, 0)
+        first_transaction = Transaction(input=50, output=50)
         genesis_block = mine_block(first_transaction, self)
         self.add_block(genesis_block)
 
@@ -36,6 +36,12 @@ class Transaction:
         self.input = input
         self.output = output
 
+    def fee(self):
+        return self.input - self.output
+
+    def validate():
+        pass
+
 
 def mine_block(transaction, blockchain):
     nonce = 0
@@ -56,6 +62,7 @@ def mine_block(transaction, blockchain):
 if __name__ == "__main__":
     transaction = Transaction(input=31, output=30)
     print(transaction.__dict__)
+    
     # blockchain = Blockchain(difficulty=5)
     #
     # block = mine_block(transaction, blockchain)
