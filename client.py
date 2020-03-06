@@ -1,6 +1,6 @@
 from network_client import *
-import random
 from network_client import Client, Server
+from Crypto.Random import random
 
 
 def app():
