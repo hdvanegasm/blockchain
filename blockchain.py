@@ -2,6 +2,7 @@ from Crypto.Hash import SHA256
 
 
 class Blockchain:
+
     def __init__(self, difficulty, blocks=[]):
         self.blocks = blocks
         self.difficulty = difficulty
@@ -16,31 +17,45 @@ class Blockchain:
 
 
 class Block:
-    def __init__(self, transaction, nonce, prev_block_hash):
-        self.transaction = transaction
+
+    def __init__(self, transactions, nonce, prev_block_hash):
+        self.transactions = transactions
         self.nonce = nonce
         self.prev_block_hash = prev_block_hash
 
     def get_hash(self):
-        dictionary = self.__dict__.copy()
-        dictionary['transaction'] = self.transaction.__dict__
-        block_str = str(dictionary)
-
-        hash_object = SHA256.new(data=bytes(block_str, encoding='utf-8'))
+        block_serialization = self.serialize()
+        hash_object = SHA256.new(data=bytes(block_serialization, encoding='utf-8'))
         return hash_object.hexdigest()
+
+    def serialize(self):
+        dictionary = self.__dict__.copy()
+
+        transaction_serializations = list()
+        for transaction in self.transactions:
+            transaction_serializations.append(transaction.serialize())
+
+        dictionary['transactions'] =  transaction_serializations
+        block_serialization = str(dictionary)
+        return block_serialization
 
 
 class Transaction:
-    def __init__(self, input, output):
+
+    def __init__(self, input, output, hash_code):
         self.input = input
         self.output = output
+        self.hash_code = hash_code
 
     def fee(self):
         return self.input - self.output
 
-    # TODO implement validation of transactions
+    # TODO Implement validation of transactions
     def validate(self):
         pass
+
+    def serialize(self):
+        return str(self.__dict__.copy())
 
 
 def mine_block(transaction, blockchain):
