@@ -55,17 +55,33 @@ class Transaction:
         pass
 
     def serialize(self):
-        return str(self.__dict__.copy())
+        return str(self.__dict__)
 
 
-def mine_block(transaction, blockchain):
+# TODO Implement transaction input
+class TransactionInput:
+    """
+    Previous Tx is the hash of the previous Tx
+    """
+    def __init__(self, prev_tx, index, signature):
+        self.prev_tx = prev_tx
+        self.index = index
+        self.signature = signature
+
+
+# TODO Implement transaction output
+class TransactionOutput:
+    pass
+
+
+def mine_block(transactions, blockchain):
     nonce = 0
     while True:
         if len(blockchain.blocks) != 0:
             hash_prev_block = blockchain.blocks[len(blockchain.blocks) - 1].get_hash()
             new_block = Block(transaction, nonce, hash_prev_block)
         else:
-            new_block = Block(transaction, nonce, "")
+            new_block = Block(transactions=transactions, nonce=nonce, prev_block_hash="0" * 64)
 
         if new_block.get_hash().startswith("0" * blockchain.difficulty):
             print("Nonce found:", nonce)
