@@ -6,6 +6,9 @@ import socket
 import sys
 import threading
 from blockchain import Transaction
+from blockchain import TransactionOutput
+from blockchain import TransactionInput
+from blockchain import Block
 from Crypto.PublicKey import ECC
 from Crypto.Hash import RIPEMD160
 import os
@@ -63,6 +66,39 @@ class Client(object):
                 print('\t--' + str(error))
                 break
 
+    # BE CAREFUL !! THIS METHOD IS FOR DEMONSTRATIONS ONLY. In a real implementation, this method does not exists.
+    def create_coin_gift(self, blockchain):
+        # Get address of the client
+        route_public_key = "public_keys/" + str(self.socket.getsockname()[1]) + "_public_key.pem"
+        file_public_key = open(route_public_key, "wt")
+        public_key = file_public_key.read()
+
+        hash_object = RIPEMD160.new(public_key)
+        hash_public_key = hash_object.hexdigest()
+
+        coin_gift_tx_input = TransactionInput(prev_tx="0" * 64, pk_spender="0" * 64)
+        coin_gift_tx_output = TransactionOutput(value=100, hash_pubkey_recipient=hash_public_key)
+        coin_gift_tx = Transaction(tx_input=coin_gift_tx_input, tx_output=coin_gift_tx_output)
+
+        transactions = [coin_gift_tx]
+
+        nonce = 0
+        while True:
+            if len(blockchain.blocks) != 0:
+                hash_prev_block = blockchain.blocks[len(blockchain.blocks) - 1].get_hash()
+                new_block = Block(transactions, nonce, hash_prev_block)
+            else:
+                new_block = Block(transactions=transactions, nonce=nonce, prev_block_hash="0" * 64)
+
+            if new_block.get_hash().startswith("0" * blockchain.difficulty):
+                print("Nonce found:", nonce)
+                return new_block
+
+            nonce += 1
+
+        message = "\x12" + block.serialize()
+        self.socket.send(message.encode('utf-8'))
+
     def generate_key_pair(self):
         """
         Generate key pairs for this client using elliptic curves, in particular, it uses secp256r1 elliptic curve
@@ -114,6 +150,8 @@ class Client(object):
 
                     pubkey_file.close()
 
+            elif input_command.startswith("cmd_gift"):
+                self.create_coin_gift()
             else:
                 message = input_command
 
@@ -171,6 +209,7 @@ class Server(object):
                 handler_thread.start()
 
                 print('==> {} connected.'.format(ip_port_tuple))
+
         except Exception as exception:
             print(exception)
             sys.exit()

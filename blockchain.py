@@ -10,6 +10,7 @@ class Blockchain:
         self.blocks = blocks
         self.difficulty = difficulty
 
+        # TODO Correct genesis block
         first_transaction = Transaction(input=50, output=50)
         genesis_block = mine_block(first_transaction, self)
         self.add_block(genesis_block)
@@ -116,7 +117,6 @@ class Transaction:
         return hash_object.hexdigest()
 
 
-# TODO Implement transaction input
 class TransactionInput:
 
     def __init__(self, prev_tx, signature, pk_spender):
@@ -126,7 +126,6 @@ class TransactionInput:
         self.pk_spender = pk_spender
 
 
-# TODO Implement transaction output
 class TransactionOutput:
 
     def __init__(self, value, hash_pubkey_recipient):
@@ -136,25 +135,38 @@ class TransactionOutput:
         self.hash_pubkey_recipient = hash_pubkey_recipient
 
 
-def mine_block(transactions, blockchain):
-    nonce = 0
-    while True:
-        if len(blockchain.blocks) != 0:
-            hash_prev_block = blockchain.blocks[len(blockchain.blocks) - 1].get_hash()
-            new_block = Block(transaction, nonce, hash_prev_block)
-        else:
-            new_block = Block(transactions=transactions, nonce=nonce, prev_block_hash="0" * 64)
+# TODO Add the new transaction for the miner
+def mine_block(transaction, blockchain, miner_address):
 
-        if new_block.get_hash().startswith("0" * blockchain.difficulty):
-            print("Nonce found:", nonce)
-            return new_block
+    # Set the incentive with the politic you like
+    incentive = 10
 
-        nonce += 1
+    transactions = [transaction]
+
+    # Add the coinbase (creation of new coins)
+    coinbase_tx_input = TransactionInput(prev_tx="0" * 64, pk_spender="0" * 64)
+    coinbase_tx_output = TransactionOutput(value=incentive, hash_pubkey_recipient=miner_address)
+    coinbase_tx = Transaction(tx_input=coinbase_tx_input, tx_output=coinbase_tx_output)
+    transactions.append(coinbase_tx)
+
+    if transaction.is_valid():
+        nonce = 0
+        while True:
+            if len(blockchain.blocks) != 0:
+                hash_prev_block = blockchain.blocks[len(blockchain.blocks) - 1].get_hash()
+                new_block = Block(transactions, nonce, hash_prev_block)
+            else:
+                new_block = Block(transactions=transactions, nonce=nonce, prev_block_hash="0" * 64)
+
+            if new_block.get_hash().startswith("0" * blockchain.difficulty):
+                print("Nonce found:", nonce)
+                return new_block
+
+            nonce += 1
 
 
 if __name__ == "__main__":
-    transaction = Transaction(input=31, output=30)
-    print(transaction.__dict__)
+    print("Test")
 
     # blockchain = Blockchain(difficulty=5)
     #
