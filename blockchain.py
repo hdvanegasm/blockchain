@@ -1,4 +1,7 @@
 from Crypto.Hash import SHA256
+from Crypto.Hash import RIPEMD160
+from Crypto.PublicKey import ECC
+from Crypto.Signature import DSS
 
 
 class Blockchain:
@@ -35,7 +38,7 @@ class Block:
         for transaction in self.transactions:
             transaction_serializations.append(transaction.serialize())
 
-        dictionary['transactions'] =  transaction_serializations
+        dictionary['transactions'] = transaction_serializations
         block_serialization = str(dictionary)
         return block_serialization
 
@@ -49,13 +52,60 @@ class Transaction:
     def fee(self):
         return self.input - self.output
 
-    # TODO Implement validation of transactions
-    def validate(self, blockchain):
-        # 1. Fin the prev tx
-        # 2. Extract the output of the tx
-        # 3. Execute the validation script
-        # 4. Return the validation result
-        pass
+    # TODO Verify it is working
+    def is_valid(self, blockchain):
+        """
+        1. Find the prev tx
+        2. Extract the output of the tx
+        3. Execute the validation script
+        4. Return the validation result
+        :param blockchain: Blockchain in which we want to validate the transaction.
+        :return: If tx is valid, return True, otherwise return False.
+        """
+
+        prev_transaction = None
+        for block in blockchain.blocks:
+            for transaction in block.transactions:
+                transaction_hash = transaction.get_hash()
+                if transaction_hash == self.tx_input.prev_tx:
+                    prev_transaction = transaction
+
+        if prev_transaction is None:
+            return False
+
+        # Check values of BTC
+        output_value = self.tx_output.value
+        prev_transaction_value = prev_transaction.tx_output.value
+        if output_value > prev_transaction_value:
+            return False
+
+        # Verifying hash of spender's Pk
+        hash_output_prev_tx = prev_transaction.tx_output.hash_pubkey_recipient
+        hash_object = RIPEMD160.new(self.tx_input.pk_spender.encode("utf-8"))
+        hash_pk_spender = hash_object.hexdigest()
+
+        # Can't spend the money, it's not for you
+        if hash_pk_spender != hash_output_prev_tx:
+            return False
+
+        # Signature validation
+        signature_input = self.tx_input.signature
+
+        signature_information = prev_transaction.get_hash() + \
+                                prev_transaction.tx_output.hash_pubkey_recipient + \
+                                self.tx_output.hash_pubkey_recipient + \
+                                str(self.tx_output.value)
+
+        hash_signature_information = SHA256.new(signature_information.encode("utf-8"))
+        public_key = ECC.import_key(self.tx_input.pk_spender)
+
+        verifier = DSS.new(public_key, "fips-186-3")
+
+        try:
+            verifier.verify(hash_signature_information, signature_input)
+            return True
+        except ValueError:
+            return False
 
     def serialize(self):
         return str(self.__dict__)
@@ -69,21 +119,21 @@ class Transaction:
 # TODO Implement transaction input
 class TransactionInput:
 
-    def __init__(self, prev_tx, index, signature):
+    def __init__(self, prev_tx, signature, pk_spender):
         # Previous Tx is the hash of the previous Tx
         self.prev_tx = prev_tx
-        self.index = index
         self.signature = signature
+        self.pk_spender = pk_spender
 
 
 # TODO Implement transaction output
 class TransactionOutput:
 
-    def __init__(self, value, hash_pub_key_recipient):
+    def __init__(self, value, hash_pubkey_recipient):
         self.value = value
 
         # It is the hashed value of the Pk of the recipient
-        self.hash_pub_key_recipient = hash_pub_key_recipient
+        self.hash_pubkey_recipient = hash_pubkey_recipient
 
 
 def mine_block(transactions, blockchain):

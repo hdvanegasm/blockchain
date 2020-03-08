@@ -28,7 +28,6 @@ class Client(object):
         0x10 - New Transaction
         0x11 - New peers
         0x12 - New mined block
-        0x13 -
         """
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -100,6 +99,7 @@ class Client(object):
 
                 transaction = Transaction(input_btc, output_btc)
                 message = "\x10" + transaction.serialize()
+
             elif input_command.startswith("cmd_show_addresses"):
                 # This is not a server command
                 send_message_to_server = False
