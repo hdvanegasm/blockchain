@@ -50,7 +50,7 @@ class Transaction:
         return self.input - self.output
 
     # TODO Implement validation of transactions
-    def validate(self):
+    def validate(self, blockchain):
         # 1. Fin the prev tx
         # 2. Extract the output of the tx
         # 3. Execute the validation script

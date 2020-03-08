@@ -7,6 +7,8 @@ import sys
 import threading
 from blockchain import Transaction
 from Crypto.PublicKey import ECC
+from Crypto.Hash import RIPEMD160
+import os
 
 class P2PNetwork(object):
     peers = ['127.0.0.1']
@@ -26,6 +28,7 @@ class Client(object):
         0x10 - New Transaction
         0x11 - New peers
         0x12 - New mined block
+        0x13 -
         """
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -84,19 +87,38 @@ class Client(object):
     def send_message(self):
         while True:
             input_command = input()
+
+            # This variable is set to True when is a server command
+            send_message_to_server = True
+
+            # TODO Correct transaction sending
             if input_command.startswith("cmd_new_tx"):
                 input_command_split = input_command.split()
                 input_btc = int(input_command_split[1])
                 output_btc = int(input_command_split[2])
-                source = int(input_command_split[3])
-                destination = int(input_command_split[4])
+                address = str(input_command_split[3])
 
                 transaction = Transaction(input_btc, output_btc)
-                message = "\x10" + transaction.__dict__.__str__()
+                message = "\x10" + transaction.serialize()
+            elif input_command.startswith("cmd_show_addresses"):
+                # This is not a server command
+                send_message_to_server = False
+
+                base_path = "public_keys/"
+                for file in os.listdir(base_path):
+                    pubkey_file = open(base_path + file)
+                    pubkey = pubkey_file.read()
+
+                    hash_object = RIPEMD160.new(data=pubkey.encode("utf-8"))
+                    print("\t>>", hash_object.hexdigest(), "[", file, "]")
+
+                    pubkey_file.close()
+
             else:
                 message = input_command
 
-            self.socket.send(message.encode('utf-8'))
+            if send_message_to_server:
+                self.socket.send(message.encode('utf-8'))
 
     def receive_message(self):
         try:
