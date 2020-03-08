@@ -42,28 +42,35 @@ class Block:
 
 class Transaction:
 
-    def __init__(self, input, output, hash_code):
-        self.input = input
-        self.output = output
-        self.hash_code = hash_code
+    def __init__(self, tx_input, tx_output):
+        self.tx_input = tx_input
+        self.tx_output = tx_output
 
     def fee(self):
         return self.input - self.output
 
     # TODO Implement validation of transactions
     def validate(self):
+        # 1. Fin the prev tx
+        # 2. Extract the output of the tx
+        # 3. Execute the validation script
+        # 4. Return the validation result
         pass
 
     def serialize(self):
         return str(self.__dict__)
 
+    def get_hash(self):
+        tx_serialization = self.serialize()
+        hash_object = SHA256.new(data=bytes(tx_serialization, encoding='utf-8'))
+        return hash_object.hexdigest()
+
 
 # TODO Implement transaction input
 class TransactionInput:
-    """
-    Previous Tx is the hash of the previous Tx
-    """
+
     def __init__(self, prev_tx, index, signature):
+        # Previous Tx is the hash of the previous Tx
         self.prev_tx = prev_tx
         self.index = index
         self.signature = signature
@@ -71,7 +78,12 @@ class TransactionInput:
 
 # TODO Implement transaction output
 class TransactionOutput:
-    pass
+
+    def __init__(self, value, hash_pub_key_recipient):
+        self.value = value
+
+        # It is the hashed value of the Pk of the recipient
+        self.hash_pub_key_recipient = hash_pub_key_recipient
 
 
 def mine_block(transactions, blockchain):
