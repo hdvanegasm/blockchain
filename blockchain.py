@@ -6,14 +6,50 @@ from Crypto.Signature import DSS
 
 class Blockchain:
 
-    def __init__(self, difficulty, blocks=[]):
-        self.blocks = blocks
-        self.difficulty = difficulty
+    def __init__(self, difficulty=-1, blocks=[], serialization=None):
+        if serialization is None:
+            self.blocks = blocks
+            self.difficulty = difficulty
 
-        # TODO Correct genesis block
-        first_transaction = Transaction(input=50, output=50)
-        genesis_block = mine_block(first_transaction, self)
-        self.add_block(genesis_block)
+            genesis_tx_input = TransactionInput(prev_tx="0" * 64, pk_spender="0" * 64, signature="0" * 64)
+            genesis_tx_output = TransactionOutput(value=100,
+                                                  hash_pubkey_recipient="ef5c3fbad7c48451403b663e0dcd59828c1def5c")
+            genesis_tx = Transaction(tx_input=genesis_tx_input, tx_output=genesis_tx_output)
+
+            transactions = [genesis_tx]
+
+            nonce = 0
+            genesis_block = None
+            while True:
+                genesis_block = Block(transactions=transactions, nonce=nonce, prev_block_hash="0" * 64)
+
+                if genesis_block.get_hash().startswith("0" * self.difficulty):
+                    print("Nonce found:", nonce)
+                    break
+
+                nonce += 1
+
+            self.add_block(genesis_block)
+
+        else:
+            blockchain_info = eval(serialization)
+
+            self.difficulty = int(blockchain_info["difficulty"])
+
+            self.blocks = []
+            block_info = blockchain_info["blocks"]
+            for block_serialization in block_info:
+                block_unserialized = Block(serialization=block_serialization)
+                self.blocks.append(block_unserialized)
+
+    def serialize(self):
+        dictionary_blockchain = self.__dict__.copy()
+        serialized_blocks = list()
+        for block in self.blocks:
+            serialized_blocks.append(block.serialize())
+
+        dictionary_blockchain["blocks"] = serialized_blocks
+        return str(dictionary_blockchain)
 
     def add_block(self, block):
         if block.get_hash().startswith("0" * self.difficulty):
@@ -22,10 +58,22 @@ class Blockchain:
 
 class Block:
 
-    def __init__(self, transactions, nonce, prev_block_hash):
-        self.transactions = transactions
-        self.nonce = nonce
-        self.prev_block_hash = prev_block_hash
+    def __init__(self, transactions=None, nonce=None, prev_block_hash=None, serialization=None):
+        if serialization is None:
+            self.transactions = transactions
+            self.nonce = nonce
+            self.prev_block_hash = prev_block_hash
+        else:
+            bloc_information = eval(serialization)
+
+            self.nonce = int(bloc_information["nonce"])
+            self.prev_block_hash = bloc_information["prev_block_hash"]
+
+            transactions_serialization = bloc_information["transactions"]
+            self.transactions = []
+            for transaction_info in transactions_serialization:
+                new_tx = Transaction(serialization=transaction_info)
+                self.transactions.append(new_tx)
 
     def get_hash(self):
         block_serialization = self.serialize()
@@ -46,9 +94,14 @@ class Block:
 
 class Transaction:
 
-    def __init__(self, tx_input, tx_output):
-        self.tx_input = tx_input
-        self.tx_output = tx_output
+    def __init__(self, tx_input=None, tx_output=None, serialization=None):
+        if serialization is None:
+            self.tx_input = tx_input
+            self.tx_output = tx_output
+        else:
+            tx_information = eval(serialization)
+            self.tx_input = TransactionInput(serialization=tx_information["tx_input"])
+            self.tx_output = TransactionOutput(serialization=tx_information["tx_output"])
 
     def fee(self):
         return self.input - self.output
@@ -109,7 +162,11 @@ class Transaction:
             return False
 
     def serialize(self):
-        return str(self.__dict__)
+        dictionary_tx = self.__dict__.copy()
+        dictionary_tx["tx_input"] = self.tx_input.serialize()
+        dictionary_tx["tx_output"] = self.tx_output.serialize()
+
+        return str(dictionary_tx)
 
     def get_hash(self):
         tx_serialization = self.serialize()
@@ -119,32 +176,47 @@ class Transaction:
 
 class TransactionInput:
 
-    def __init__(self, prev_tx, signature, pk_spender):
+    def __init__(self, prev_tx="", signature="", pk_spender="", serialization=None):
         # Previous Tx is the hash of the previous Tx
-        self.prev_tx = prev_tx
-        self.signature = signature
-        self.pk_spender = pk_spender
+        if serialization is None:
+            self.prev_tx = prev_tx
+            self.signature = signature
+            self.pk_spender = pk_spender
+        else:
+            tx_input_information = eval(serialization)
+            self.prev_tx = tx_input_information["prev_tx"]
+            self.signature = tx_input_information["signature"]
+            self.pk_spender = tx_input_information["pk_spender"]
+
+    def serialize(self):
+        return str(self.__dict__)
 
 
 class TransactionOutput:
 
-    def __init__(self, value, hash_pubkey_recipient):
-        self.value = value
+    def __init__(self, value=-1, hash_pubkey_recipient="", serialization=None):
+        if serialization is None:
+            self.value = value
 
-        # It is the hashed value of the Pk of the recipient
-        self.hash_pubkey_recipient = hash_pubkey_recipient
+            # It is the hashed value of the Pk of the recipient
+            self.hash_pubkey_recipient = hash_pubkey_recipient
+        else:
+            tx_output_information = eval(serialization)
+            self.value = tx_output_information["value"]
+            self.hash_pubkey_recipient = tx_output_information["hash_pubkey_recipient"]
+
+    def serialize(self):
+        return str(self.__dict__)
 
 
-# TODO Add the new transaction for the miner
 def mine_block(transaction, blockchain, miner_address):
-
     # Set the incentive with the politic you like
     incentive = 10
 
     transactions = [transaction]
 
     # Add the coinbase (creation of new coins)
-    coinbase_tx_input = TransactionInput(prev_tx="0" * 64, pk_spender="0" * 64)
+    coinbase_tx_input = TransactionInput(prev_tx="0" * 64, pk_spender="0" * 64, signature="0" * 64)
     coinbase_tx_output = TransactionOutput(value=incentive, hash_pubkey_recipient=miner_address)
     coinbase_tx = Transaction(tx_input=coinbase_tx_input, tx_output=coinbase_tx_output)
     transactions.append(coinbase_tx)
@@ -167,7 +239,10 @@ def mine_block(transaction, blockchain, miner_address):
 
 if __name__ == "__main__":
     print("Test")
+    blockchain = Blockchain(difficulty=2)
 
+    print(blockchain.serialize())
+    blockchain_serialization = blockchain.serialize()
     # blockchain = Blockchain(difficulty=5)
     #
     # block = mine_block(transaction, blockchain)

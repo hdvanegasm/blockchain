@@ -175,6 +175,7 @@ class Server(object):
 
     def __init__(self, byte_size):
         try:
+
             # List with connections to the server
             self.connections = []
 
@@ -195,6 +196,7 @@ class Server(object):
             print('==> Server running.')
 
             # Listen to new connections
+            # TODO Send the blockchain when a new client is connected
             while True:
                 connection_handler, ip_port_tuple = self.socket.accept()
 
