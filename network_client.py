@@ -88,9 +88,6 @@ class Client(object):
         while True:
             try:
                 data = self.receive_message()
-                # if not data:
-                #     print("==> Server disconnected. IFFF")
-                #     break
                 if data[0:1] == '\x11':
                     print('==> Got peers.')
                     update_peers(data[1:])

@@ -100,6 +100,7 @@ class Block:
         block_serialization = str(dictionary)
         return block_serialization
 
+    # TODO Fix this
     def equal_blocks(self, other):
         if len(self.transactions) > 1 and len(other.transactions) > 1:
             transactions_hash_self = []
@@ -120,8 +121,7 @@ class Block:
             transaction_self = self.transactions[0]
             transaction_other = other.transactions[0]
 
-            return transaction_self.serialize() == transaction_other.serialize()
-
+            return transaction_self.get_hash() == transaction_other.get_hash()
         else:
             return False
 
