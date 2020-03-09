@@ -244,6 +244,7 @@ class Client(object):
                     message = "\x10" + new_transaction.serialize()
                 else:
                     print("\t-- You do not have unspent transactions")
+                    send_message_to_server = False
 
             elif input_command.startswith("cmd_show_addresses"):
                 # This is not a server command

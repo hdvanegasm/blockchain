@@ -74,6 +74,7 @@ class Block:
             self.prev_block_hash = prev_block_hash
             self.transactions = transactions
         else:
+            #TODO Eval error
             bloc_information = eval(serialization)
 
             self.nonce = int(bloc_information["nonce"])
