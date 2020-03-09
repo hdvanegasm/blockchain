@@ -97,7 +97,7 @@ class Miner(object):
                     if result["status"]:
                         message = "\x12" + result["new_block"].serialize()
                         print("==> Sending new mined block")
-                        self.socket.sendall(data=message.encode("utf-8"))
+                        self.socket.sendall(message.encode("utf-8"))
                     else:
                         print("==> Invalid transaction. The block have not been mined")
                 elif data[0:1] == '\x13':
@@ -112,8 +112,8 @@ class Miner(object):
 
                     in_blockchain = False
                     for block in self.blockchain.blocks:
-                        if new_block == block:
-                            print("==> This block is already mined and is in your blockchain")
+                        if new_block.equal_blocks(block):
+                            print("==> This block is already mined and is in your blockchain. It will not be added")
                             in_blockchain = True
                             break
 
@@ -154,14 +154,18 @@ class Miner(object):
         file_private_key.close()
 
     def hash_pubkey(self):
-        route_public_key = "public_keys/" + str(self.socket.getsockname()[1]) + "_public_key.pem"
-        file_public_key = open(route_public_key, "r")
-        public_key = file_public_key.read()
+        public_key = self.load_public_key()
 
         hash_object = RIPEMD160.new(public_key.encode("utf-8"))
         hash_public_key = hash_object.hexdigest()
-        file_public_key.close()
         return hash_public_key
+
+    def load_public_key(self):
+        route_public_key = "public_keys/" + str(self.socket.getsockname()[1]) + "_public_key.pem"
+        file_public_key = open(route_public_key, "r")
+        public_key = file_public_key.read()
+        file_public_key.close()
+        return public_key
 
     def send_message(self):
 

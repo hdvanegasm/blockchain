@@ -109,8 +109,8 @@ class Client(object):
 
                     in_blockchain = False
                     for block in self.blockchain.blocks:
-                        if new_block == block:
-                            print("==> This block is already mined and is in your blockchain")
+                        if new_block.equal_blocks(block):
+                            print("==> This block is already mined and is in your blockchain. It will not be added")
                             in_blockchain = True
                             break
 
@@ -119,7 +119,6 @@ class Client(object):
                         print("\tNew Block Hash:", new_block.get_hash())
                         self.blockchain.add_block(new_block)
                         update_blockchain_file(self.blockchain.serialize())
-
                 elif data != "":
                     print("[#] " + data)
             except ConnectionError as error:
@@ -156,6 +155,7 @@ class Client(object):
 
             nonce += 1
 
+        print(coin_gift_tx.serialize())
         message = "\x12" + new_block.serialize()
         self.socket.sendall(message.encode('utf-8'))
 
@@ -183,14 +183,18 @@ class Client(object):
         file_private_key.close()
 
     def hash_pubkey(self):
-        route_public_key = "public_keys/" + str(self.socket.getsockname()[1]) + "_public_key.pem"
-        file_public_key = open(route_public_key, "r")
-        public_key = file_public_key.read()
+        public_key = self.load_public_key()
 
         hash_object = RIPEMD160.new(public_key.encode("utf-8"))
         hash_public_key = hash_object.hexdigest()
-        file_public_key.close()
         return hash_public_key
+
+    def load_public_key(self):
+        route_public_key = "public_keys/" + str(self.socket.getsockname()[1]) + "_public_key.pem"
+        file_public_key = open(route_public_key, "r")
+        public_key = file_public_key.read()
+        file_public_key.close()
+        return public_key
 
     def send_message(self):
         while True:
@@ -205,39 +209,44 @@ class Client(object):
                 block_number = 0
                 print("==> List of available transactions:")
                 print(self.blockchain.blocks)
+                tx_unspent_counter = 0
                 for block in self.blockchain.blocks:
                     transaction_number = 0
                     for transaction in block.transactions:
                         if transaction.tx_output.hash_pubkey_recipient == self.hash_pubkey() and \
                                 not transaction.is_already_spent(self.blockchain):
+                            tx_unspent_counter += 1
                             print("\t -- [ B:", block_number, " - T:", transaction_number, "]", "Value:", transaction.tx_output.value)
                         transaction_number += 1
                     block_number += 1
 
-                block_number_spend = int(input("\tSelect block number: "))
-                transaction_number_spend = int(input("\tSelect transaction number: "))
+                if tx_unspent_counter > 0:
+                    block_number_spend = int(input("\tSelect block number: "))
+                    transaction_number_spend = int(input("\tSelect transaction number: "))
 
-                transaction_spend = self.blockchain.blocks[block_number_spend].transactions[transaction_number_spend]
-                address = input("\tAddress: ")
-                value = int(input("\tValue: "))
+                    transaction_spend = self.blockchain.blocks[block_number_spend].transactions[transaction_number_spend]
+                    address = input("\tAddress: ")
+                    value = int(input("\tValue: "))
 
-                signature_information = transaction_spend.get_hash() + \
-                    transaction_spend.tx_output.hash_pubkey_recipient + \
-                    address + \
-                    str(value)
+                    signature_information = transaction_spend.get_hash() + \
+                        transaction_spend.tx_output.hash_pubkey_recipient + \
+                        address + \
+                        str(value)
 
-                route_private_key = "private_keys/" + str(self.socket.getsockname()[1]) + "_private_key.pem"
-                hash_message = SHA256.new(signature_information.encode("utf-8"))
-                private_key = ECC.import_key(open(route_private_key).read())
-                signer = DSS.new(private_key, "fips-186-3")
-                signature = signer.sign(hash_message)
+                    route_private_key = "private_keys/" + str(self.socket.getsockname()[1]) + "_private_key.pem"
+                    hash_message = SHA256.new(signature_information.encode("utf-8"))
+                    private_key = ECC.import_key(open(route_private_key).read())
+                    signer = DSS.new(private_key, "fips-186-3")
+                    signature = signer.sign(hash_message)
 
-                new_tx_input = TransactionInput(prev_tx=transaction_spend.get_hash(), signature=signature, pk_spender=self.hash_pubkey())
-                new_tx_output = TransactionOutput(value=value, hash_pubkey_recipient=address)
+                    new_tx_input = TransactionInput(prev_tx=transaction_spend.get_hash(), signature=signature, pk_spender=self.load_public_key())
+                    new_tx_output = TransactionOutput(value=value, hash_pubkey_recipient=address)
 
-                new_transaction = Transaction(tx_input=new_tx_input, tx_output=new_tx_output)
-                print("\t-- Signing and sending transaction.")
-                message = "\x10" + new_transaction.serialize()
+                    new_transaction = Transaction(tx_input=new_tx_input, tx_output=new_tx_output)
+                    print("\t-- Signing and sending transaction.")
+                    message = "\x10" + new_transaction.serialize()
+                else:
+                    print("\t-- You do not have unspent transactions")
 
             elif input_command.startswith("cmd_show_addresses"):
                 # This is not a server command
@@ -358,8 +367,21 @@ class Server(object):
                         print("==> New mined block.")
                         new_block_info = data[1:]
                         new_block = Block(serialization=new_block_info)
-                        self.blockchain.add_block(new_block)
-                        update_blockchain_file(self.blockchain.serialize())
+
+                        in_blockchain = False
+                        if len(new_block.transactions) > 1:
+                            for block in self.blockchain.blocks:
+                                if new_block.equal_blocks(block):
+                                    print("==> This block is already mined and is in your blockchain. It will not be added to server blockchain")
+                                    in_blockchain = True
+                                    break
+
+                        if not in_blockchain:
+                            print("\t", new_block.__dict__)
+                            print("\tNew Block Hash:", new_block.get_hash())
+                            self.blockchain.add_block(new_block)
+                            update_blockchain_file(self.blockchain.serialize())
+
                         connection.sendall(data.encode("utf-8"))
                     elif data:
                         connection.sendall(data.encode("utf-8"))

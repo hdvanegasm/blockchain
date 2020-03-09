@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from Crypto.Hash import RIPEMD160
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import ECC
@@ -98,20 +100,31 @@ class Block:
         block_serialization = str(dictionary)
         return block_serialization
 
-    def __eq__(self, other):
-        transactions_hash_self = []
-        for transaction in self.transactions:
-            transactions_hash_self.append(transaction.get_hash())
+    def equal_blocks(self, other):
+        if len(self.transactions) > 1 and len(other.transactions) > 1:
+            transactions_hash_self = []
+            for transaction in self.transactions[1:]:
+                transactions_hash_self.append(transaction.get_hash())
 
-        transactions_hash_other = []
-        for transaction in other.transactions:
-            transactions_hash_other.append(transaction.get_hash())
+            transactions_hash_other = []
+            for transaction in other.transactions[1:]:
+                transactions_hash_other.append(transaction.get_hash())
 
-        for transaction_hash in transactions_hash_self:
-            if transaction_hash not in transactions_hash_other:
-                return False
+            for transaction_hash in transactions_hash_self:
+                if transaction_hash not in transactions_hash_other:
+                    return False
 
-        return True
+            return True
+
+        elif len(self.transactions) == 1 and len(other.transactions) == 1:
+            transaction_self = self.transactions[0]
+            transaction_other = other.transactions[0]
+
+            return transaction_self.serialize() == transaction_other.serialize()
+
+        else:
+            return False
+
 
 class Transaction:
 
@@ -169,8 +182,6 @@ class Transaction:
 
         # TODO Fix hashes
         # Can't spend the money, it's not for you
-        print("!!!", hash_pk_spender)
-        print("!!!", hash_output_prev_tx)
         if hash_pk_spender != hash_output_prev_tx:
             return False
 
@@ -248,7 +259,7 @@ def mine_block(transaction, blockchain, miner_address):
     # Set the incentive with the politic you like
     incentive = 10
 
-    transactions = [transaction]
+    transactions = []
 
     # Add the coinbase (creation of new coins)
     coinbase_tx_input = TransactionInput(prev_tx="0" * 64, pk_spender="0" * 64, signature="0" * 64)
@@ -256,7 +267,10 @@ def mine_block(transaction, blockchain, miner_address):
     coinbase_tx = Transaction(tx_input=coinbase_tx_input, tx_output=coinbase_tx_output)
     transactions.append(coinbase_tx)
 
+    transactions.append(transaction)
+
     if transaction.is_valid(blockchain):
+        print("\t>> Mining new block")
         nonce = 0
         while True:
             if len(blockchain.blocks) != 0:
@@ -269,12 +283,13 @@ def mine_block(transaction, blockchain, miner_address):
 
                 prev_transaction = None
                 for block in blockchain.blocks:
-                    for transaction in block.transactions:
-                        transaction_hash = transaction.get_hash()
+                    for transaction_blockchain in block.transactions:
+                        transaction_hash = transaction_blockchain.get_hash()
                         if transaction_hash == transaction.tx_input.prev_tx:
                             prev_transaction = transaction
 
-                print("Nonce found:", nonce)
+                now = datetime.now()
+                print("Nonce found:", nonce, "[", now.strftime("%H:%M:%S"),"]")
                 result = dict()
                 result["new_block"] = new_block
                 result["gain"] = coinbase_tx.tx_output.value + (prev_transaction.tx_output.value - transaction.tx_output.value)
