@@ -102,7 +102,6 @@ class Miner(object):
                 elif data[0:1] == '\x12':
                     print('==> New mined block.')
                     block_info = data[1:]
-                    print("-----------\n", block_info, "-----------\n")
                     new_block = Block(serialization=block_info)
 
                     in_blockchain = False
