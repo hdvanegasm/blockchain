@@ -1,5 +1,5 @@
-from Crypto.Hash import SHA256
 from Crypto.Hash import RIPEMD160
+from Crypto.Hash import SHA256
 from Crypto.PublicKey import ECC
 from Crypto.Signature import DSS
 
@@ -11,7 +11,7 @@ class Blockchain:
             self.blocks = blocks
             self.difficulty = difficulty
 
-            genesis_tx_input = TransactionInput(prev_tx="0" * 64, pk_spender="0" * 64, signature="0" * 64)
+            genesis_tx_input = TransactionInput(prev_tx="0" * 64, pk_spender="0" * 64, signature=bytes("\x11" * 64, encoding="utf-8"))
             genesis_tx_output = TransactionOutput(value=100,
                                                   hash_pubkey_recipient="ef5c3fbad7c48451403b663e0dcd59828c1def5c")
             genesis_tx = Transaction(tx_input=genesis_tx_input, tx_output=genesis_tx_output)
@@ -42,6 +42,12 @@ class Blockchain:
                 block_unserialized = Block(serialization=block_serialization)
                 self.blocks.append(block_unserialized)
 
+    def is_valid(self):
+        for block in self.blocks:
+            if not block.get_hash().startswith("0" * self.difficulty):
+                return False
+        return True
+
     def serialize(self):
         dictionary_blockchain = self.__dict__.copy()
         serialized_blocks = list()
@@ -53,6 +59,7 @@ class Blockchain:
 
     def add_block(self, block):
         if block.get_hash().startswith("0" * self.difficulty):
+            print("==> New valid block added to blockchain.")
             self.blocks.append(block)
 
 
@@ -60,9 +67,9 @@ class Block:
 
     def __init__(self, transactions=None, nonce=None, prev_block_hash=None, serialization=None):
         if serialization is None:
-            self.transactions = transactions
             self.nonce = nonce
             self.prev_block_hash = prev_block_hash
+            self.transactions = transactions
         else:
             bloc_information = eval(serialization)
 
@@ -91,6 +98,20 @@ class Block:
         block_serialization = str(dictionary)
         return block_serialization
 
+    def __eq__(self, other):
+        transactions_hash_self = []
+        for transaction in self.transactions:
+            transactions_hash_self.append(transaction.get_hash())
+
+        transactions_hash_other = []
+        for transaction in other.transactions:
+            transactions_hash_other.append(transaction.get_hash())
+
+        for transaction_hash in transactions_hash_self:
+            if transaction_hash not in transactions_hash_other:
+                return False
+
+        return True
 
 class Transaction:
 
@@ -103,8 +124,12 @@ class Transaction:
             self.tx_input = TransactionInput(serialization=tx_information["tx_input"])
             self.tx_output = TransactionOutput(serialization=tx_information["tx_output"])
 
-    def fee(self):
-        return self.input - self.output
+    def is_already_spent(self, blockchain):
+        for block in blockchain.blocks:
+            for transaction in block.transactions:
+                if transaction.tx_input.prev_tx == self.get_hash():
+                    return True
+        return False
 
     # TODO Verify it is working
     def is_valid(self, blockchain):
@@ -116,7 +141,7 @@ class Transaction:
         :param blockchain: Blockchain in which we want to validate the transaction.
         :return: If tx is valid, return True, otherwise return False.
         """
-
+        print("\t>> Validating transaction")
         prev_transaction = None
         for block in blockchain.blocks:
             for transaction in block.transactions:
@@ -127,20 +152,29 @@ class Transaction:
         if prev_transaction is None:
             return False
 
+        print("\t\t-- Found previous transaction")
+
         # Check values of BTC
         output_value = self.tx_output.value
         prev_transaction_value = prev_transaction.tx_output.value
         if output_value > prev_transaction_value:
             return False
 
+        print("\t\t-- Values are correct")
+
         # Verifying hash of spender's Pk
         hash_output_prev_tx = prev_transaction.tx_output.hash_pubkey_recipient
         hash_object = RIPEMD160.new(self.tx_input.pk_spender.encode("utf-8"))
         hash_pk_spender = hash_object.hexdigest()
 
+        # TODO Fix hashes
         # Can't spend the money, it's not for you
+        print("!!!", hash_pk_spender)
+        print("!!!", hash_output_prev_tx)
         if hash_pk_spender != hash_output_prev_tx:
             return False
+
+        print("\t\t-- Pubkey hashes match")
 
         # Signature validation
         signature_input = self.tx_input.signature
@@ -157,6 +191,7 @@ class Transaction:
 
         try:
             verifier.verify(hash_signature_information, signature_input)
+            print("\t\t-- Signature verified")
             return True
         except ValueError:
             return False
@@ -221,34 +256,35 @@ def mine_block(transaction, blockchain, miner_address):
     coinbase_tx = Transaction(tx_input=coinbase_tx_input, tx_output=coinbase_tx_output)
     transactions.append(coinbase_tx)
 
-    if transaction.is_valid():
+    if transaction.is_valid(blockchain):
         nonce = 0
         while True:
             if len(blockchain.blocks) != 0:
                 hash_prev_block = blockchain.blocks[len(blockchain.blocks) - 1].get_hash()
-                new_block = Block(transactions, nonce, hash_prev_block)
+                new_block = Block(transactions=transactions, nonce=nonce, prev_block_hash=hash_prev_block)
             else:
                 new_block = Block(transactions=transactions, nonce=nonce, prev_block_hash="0" * 64)
 
             if new_block.get_hash().startswith("0" * blockchain.difficulty):
+
+                prev_transaction = None
+                for block in blockchain.blocks:
+                    for transaction in block.transactions:
+                        transaction_hash = transaction.get_hash()
+                        if transaction_hash == transaction.tx_input.prev_tx:
+                            prev_transaction = transaction
+
                 print("Nonce found:", nonce)
-                return new_block
+                result = dict()
+                result["new_block"] = new_block
+                result["gain"] = coinbase_tx.tx_output.value + (prev_transaction.tx_output.value - transaction.tx_output.value)
+                result["status"] = True
+                return result
 
             nonce += 1
-
-
-if __name__ == "__main__":
-    print("Test")
-    blockchain = Blockchain(difficulty=2)
-
-    print(blockchain.serialize())
-    blockchain_serialization = blockchain.serialize()
-    # blockchain = Blockchain(difficulty=5)
-    #
-    # block = mine_block(transaction, blockchain)
-    # blockchain.add_block(block)
-    #
-    # print(block.__dict__)
-    # print("Bitcoin earned:", transaction.input - transaction.output)
-    #
-    # print(len(blockchain.blocks))
+    else:
+        result = dict()
+        result["new_block"] = None
+        result["gain"] = 0
+        result["status"] = False
+        return result

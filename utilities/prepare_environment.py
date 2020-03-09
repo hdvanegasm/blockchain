@@ -22,3 +22,5 @@ def delete_files_folder(folder):
 if __name__ == "__main__":
     delete_files_folder("../private_keys/")
     delete_files_folder("../public_keys/")
+    print("==> Deleting ../blockchain_file.txt")
+    os.unlink("../blockchain_file.txt")

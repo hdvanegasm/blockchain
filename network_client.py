@@ -2,16 +2,22 @@
 This is a basic implementation of a client for a cryptocurrency
 """
 
+import os
 import socket
 import sys
 import threading
-from blockchain import Transaction
-from blockchain import TransactionOutput
-from blockchain import TransactionInput
-from blockchain import Block
-from Crypto.PublicKey import ECC
+
 from Crypto.Hash import RIPEMD160
-import os
+from Crypto.Hash import SHA256
+from Crypto.PublicKey import ECC
+from Crypto.Signature import DSS
+
+from blockchain import Block
+from blockchain import Blockchain
+from blockchain import Transaction
+from blockchain import TransactionInput
+from blockchain import TransactionOutput
+
 
 class P2PNetwork(object):
     peers = ['127.0.0.1']
@@ -20,6 +26,37 @@ class P2PNetwork(object):
 def update_peers(peers_string):
     P2PNetwork.peers = peers_string.split(',')[:-1]
 
+
+def update_blockchain_file(blockchain_info):
+    file_blockchain = open("blockchain_file.txt", "w+")
+    file_blockchain.write(blockchain_info)
+    file_blockchain.close()
+
+
+def recv_timeout(the_socket, timeout=1):
+    """
+    Tomado de https://www.binarytides.com/receive-full-data-with-the-recv-socket-function-in-python/
+    :param the_socket:
+    :param timeout:
+    :return:
+    """
+    # make socket non blocking
+    the_socket.setblocking(0)
+
+    # total data partwise in an array
+    total_data = []
+    data = ''
+
+    # beginning time
+    for i in range(5000):
+        try:
+            data = the_socket.recv(8192)
+            if data:
+                total_data.append(str(data, "utf-8"))
+        except BlockingIOError:
+            pass
+
+    return ''.join(total_data)
 
 class Client(object):
 
@@ -31,6 +68,7 @@ class Client(object):
         0x10 - New Transaction
         0x11 - New peers
         0x12 - New mined block
+        0x13 - Blockchain
         """
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -50,39 +88,61 @@ class Client(object):
         while True:
             try:
                 data = self.receive_message()
-                if not data:
-                    print("==> Server disconnected.")
-                    break
-                elif data[0:1] == '\x11':
+                # if not data:
+                #     print("==> Server disconnected. IFFF")
+                #     break
+                if data[0:1] == '\x11':
                     print('==> Got peers.')
                     update_peers(data[1:])
                 elif data[0:1] == '\x10':
-                    print('==> New transaction')
+                    print('==> New transaction.')
                     print(data[1:])
-                else:
+                elif data[0:1] == '\x13':
+                    print('==> Blockchain downloaded.')
+                    blockchain_info = data[1:]
+                    self.blockchain = Blockchain(serialization=blockchain_info)
+                    update_blockchain_file(self.blockchain.serialize())
+                elif data[0:1] == '\x12':
+                    print('==> New mined block.')
+                    block_info = data[1:]
+                    new_block = Block(serialization=block_info)
+
+                    in_blockchain = False
+                    for block in self.blockchain.blocks:
+                        if new_block == block:
+                            print("==> This block is already mined and is in your blockchain")
+                            in_blockchain = True
+                            break
+
+                    if not in_blockchain:
+                        print("\t", new_block.__dict__)
+                        print("\tNew Block Hash:", new_block.get_hash())
+                        self.blockchain.add_block(new_block)
+                        update_blockchain_file(self.blockchain.serialize())
+
+                elif data != "":
                     print("[#] " + data)
             except ConnectionError as error:
-                print("==> Server disconnected.")
+                print("==> Server disconnected. ")
                 print('\t--' + str(error))
                 break
 
     # BE CAREFUL !! THIS METHOD IS FOR DEMONSTRATIONS ONLY. In a real implementation, this method does not exists.
-    def create_coin_gift(self, blockchain):
+    def create_gift_coin(self, blockchain):
+        """
+        This method creates a new coin for the new client
+        """
         # Get address of the client
-        route_public_key = "public_keys/" + str(self.socket.getsockname()[1]) + "_public_key.pem"
-        file_public_key = open(route_public_key, "wt")
-        public_key = file_public_key.read()
+        hash_public_key = self.hash_pubkey()
 
-        hash_object = RIPEMD160.new(public_key)
-        hash_public_key = hash_object.hexdigest()
-
-        coin_gift_tx_input = TransactionInput(prev_tx="0" * 64, pk_spender="0" * 64)
+        coin_gift_tx_input = TransactionInput(prev_tx="1" * 64, pk_spender="1" * 64, signature=bytes("\x11" * 64, encoding="utf-8"))
         coin_gift_tx_output = TransactionOutput(value=100, hash_pubkey_recipient=hash_public_key)
         coin_gift_tx = Transaction(tx_input=coin_gift_tx_input, tx_output=coin_gift_tx_output)
 
         transactions = [coin_gift_tx]
 
         nonce = 0
+        new_block = None
         while True:
             if len(blockchain.blocks) != 0:
                 hash_prev_block = blockchain.blocks[len(blockchain.blocks) - 1].get_hash()
@@ -92,12 +152,12 @@ class Client(object):
 
             if new_block.get_hash().startswith("0" * blockchain.difficulty):
                 print("Nonce found:", nonce)
-                return new_block
+                break
 
             nonce += 1
 
-        message = "\x12" + block.serialize()
-        self.socket.send(message.encode('utf-8'))
+        message = "\x12" + new_block.serialize()
+        self.socket.sendall(message.encode('utf-8'))
 
     def generate_key_pair(self):
         """
@@ -119,6 +179,19 @@ class Client(object):
         print("\t" + route_private_key)
         print("\t" + route_public_key)
 
+        file_public_key.close()
+        file_private_key.close()
+
+    def hash_pubkey(self):
+        route_public_key = "public_keys/" + str(self.socket.getsockname()[1]) + "_public_key.pem"
+        file_public_key = open(route_public_key, "r")
+        public_key = file_public_key.read()
+
+        hash_object = RIPEMD160.new(public_key.encode("utf-8"))
+        hash_public_key = hash_object.hexdigest()
+        file_public_key.close()
+        return hash_public_key
+
     def send_message(self):
         while True:
             input_command = input()
@@ -126,15 +199,45 @@ class Client(object):
             # This variable is set to True when is a server command
             send_message_to_server = True
 
-            # TODO Correct transaction sending
             if input_command.startswith("cmd_new_tx"):
-                input_command_split = input_command.split()
-                input_btc = int(input_command_split[1])
-                output_btc = int(input_command_split[2])
-                address = str(input_command_split[3])
 
-                transaction = Transaction(input_btc, output_btc)
-                message = "\x10" + transaction.serialize()
+                # Show available transactions
+                block_number = 0
+                print("==> List of available transactions:")
+                print(self.blockchain.blocks)
+                for block in self.blockchain.blocks:
+                    transaction_number = 0
+                    for transaction in block.transactions:
+                        if transaction.tx_output.hash_pubkey_recipient == self.hash_pubkey() and \
+                                not transaction.is_already_spent(self.blockchain):
+                            print("\t -- [ B:", block_number, " - T:", transaction_number, "]", "Value:", transaction.tx_output.value)
+                        transaction_number += 1
+                    block_number += 1
+
+                block_number_spend = int(input("\tSelect block number: "))
+                transaction_number_spend = int(input("\tSelect transaction number: "))
+
+                transaction_spend = self.blockchain.blocks[block_number_spend].transactions[transaction_number_spend]
+                address = input("\tAddress: ")
+                value = int(input("\tValue: "))
+
+                signature_information = transaction_spend.get_hash() + \
+                    transaction_spend.tx_output.hash_pubkey_recipient + \
+                    address + \
+                    str(value)
+
+                route_private_key = "private_keys/" + str(self.socket.getsockname()[1]) + "_private_key.pem"
+                hash_message = SHA256.new(signature_information.encode("utf-8"))
+                private_key = ECC.import_key(open(route_private_key).read())
+                signer = DSS.new(private_key, "fips-186-3")
+                signature = signer.sign(hash_message)
+
+                new_tx_input = TransactionInput(prev_tx=transaction_spend.get_hash(), signature=signature, pk_spender=self.hash_pubkey())
+                new_tx_output = TransactionOutput(value=value, hash_pubkey_recipient=address)
+
+                new_transaction = Transaction(tx_input=new_tx_input, tx_output=new_tx_output)
+                print("\t-- Signing and sending transaction.")
+                message = "\x10" + new_transaction.serialize()
 
             elif input_command.startswith("cmd_show_addresses"):
                 # This is not a server command
@@ -151,23 +254,25 @@ class Client(object):
                     pubkey_file.close()
 
             elif input_command.startswith("cmd_gift"):
-                self.create_coin_gift()
+                send_message_to_server = False
+                self.create_gift_coin(self.blockchain)
             else:
                 message = input_command
 
             if send_message_to_server:
-                self.socket.send(message.encode('utf-8'))
+                self.socket.sendall(message.encode('utf-8'))
 
     def receive_message(self):
         try:
-            data = self.socket.recv(self.byte_size)
-            return data.decode('utf-8')
+            #data = self.socket.recv(self.byte_size)
+            data = recv_timeout(self.socket)
+            return data
         except KeyboardInterrupt:
             self.send_disconnect_signal()
 
     def send_disconnect_signal(self):
         print('==> Disconnected from server.')
-        self.socket.send("q".encode('utf-8'))
+        self.socket.sendall("q".encode('utf-8'))
         sys.exit()
 
 
@@ -195,8 +300,9 @@ class Server(object):
 
             print('==> Server running.')
 
+            self.blockchain = self.load_blockchain()
+
             # Listen to new connections
-            # TODO Send the blockchain when a new client is connected
             while True:
                 connection_handler, ip_port_tuple = self.socket.accept()
 
@@ -212,20 +318,51 @@ class Server(object):
 
                 print('==> {} connected.'.format(ip_port_tuple))
 
+                # Send blockchain to new clients
+                blockchain_message = "\x13" + self.blockchain.serialize()
+                connection_handler.sendall(blockchain_message.encode("utf-8"))
+                print("==> Blockchain sent to", ip_port_tuple)
+
         except Exception as exception:
             print(exception)
             sys.exit()
 
+    def load_blockchain(self):
+        """
+        Creates a new blockchain if necessary and saves it into disk, or load the blockchain from disk.
+        :return: The saved blockchain, otherwise it creates a new Blockchain
+        """
+        try:
+            blockchain_file = open("blockchain_file.txt")
+            print("==> Blockchain loaded from file")
+            blockchain_info = blockchain_file.read()
+            loaded_blockchain = Blockchain(serialization=blockchain_info)
+            blockchain_file.close()
+            return loaded_blockchain
+        except FileNotFoundError:
+            print("==> Creating new blockchain")
+            new_blockchain = Blockchain(difficulty=3)
+            update_blockchain_file(new_blockchain.serialize())
+            return new_blockchain
+
     def handler(self, connection_handler, ip_port_tuple):
         try:
             while True:
-                data = connection_handler.recv(self.byte_size)
+                #data = connection_handler.recv(self.byte_size)
+                data = recv_timeout(connection_handler)
                 # Check if the peer wants to disconnect
                 for connection in self.connections:
-                    if data and data.decode('utf-8') == 'cmd_show_peers':
-                        connection.send(('---' + str(self.peers)).encode('utf-8'))
+                    if data and data == 'cmd_show_peers':
+                        connection.sendall(('---' + str(self.peers)).encode('utf-8'))
+                    elif data and data[0:1] == "\x12":
+                        print("==> New mined block.")
+                        new_block_info = data[1:]
+                        new_block = Block(serialization=new_block_info)
+                        self.blockchain.add_block(new_block)
+                        update_blockchain_file(self.blockchain.serialize())
+                        connection.sendall(data.encode("utf-8"))
                     elif data:
-                        connection.send(data)
+                        connection.sendall(data.encode("utf-8"))
         except ConnectionResetError:
             print("==> " + str(ip_port_tuple) + " disconnected")
             self.connections.remove(connection_handler)
@@ -239,7 +376,7 @@ class Server(object):
             peer_list += str(peer[0]) + ','
 
         for connection in self.connections:
-            connection.send(bytes('\x11' + peer_list, 'utf-8'))
+            connection.sendall(bytes('\x11' + peer_list, 'utf-8'))
 
         print('==> Peers sent.')
 

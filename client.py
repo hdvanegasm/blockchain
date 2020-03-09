@@ -1,6 +1,6 @@
-from network_client import *
-from network_client import Client, Server
 from Crypto.Random import random
+
+from network_client import *
 
 
 def app():
@@ -12,13 +12,13 @@ def app():
                     client = Client(peer)
                 except KeyboardInterrupt:
                     sys.exit(0)
-                except:
+                except Exception:
                     pass
 
                 # If everyone try to be server
                 if random.randint(1, 5) == 1:
                     try:
-                        server = Server(byte_size=1024)
+                        server = Server(byte_size=4096)
                     except KeyboardInterrupt:
                         sys.exit(0)
                     except:
