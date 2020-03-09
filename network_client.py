@@ -366,12 +366,11 @@ class Server(object):
                         new_block = Block(serialization=new_block_info)
 
                         in_blockchain = False
-                        if len(new_block.transactions) > 1:
-                            for block in self.blockchain.blocks:
-                                if new_block.equal_blocks(block):
-                                    print("==> This block is already mined and is in your blockchain. It will not be added to server blockchain")
-                                    in_blockchain = True
-                                    break
+                        for block in self.blockchain.blocks:
+                            if new_block.equal_blocks(block):
+                                print("==> This block is already mined and is in your blockchain. It will not be added to server blockchain")
+                                in_blockchain = True
+                                break
 
                         if not in_blockchain:
                             print("\t", new_block.__dict__)
@@ -398,8 +397,3 @@ class Server(object):
             connection.sendall(bytes('\x11' + peer_list, 'utf-8'))
 
         print('==> Peers sent.')
-
-
-class Miner(object):
-    # TODO implement Miner
-    pass

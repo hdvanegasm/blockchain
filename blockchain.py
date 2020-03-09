@@ -13,7 +13,8 @@ class Blockchain:
             self.blocks = blocks
             self.difficulty = difficulty
 
-            genesis_tx_input = TransactionInput(prev_tx="0" * 64, pk_spender="0" * 64, signature=bytes("\x11" * 64, encoding="utf-8"))
+            genesis_tx_input = TransactionInput(prev_tx="0" * 64, pk_spender="0" * 64,
+                                                signature=bytes("\x11" * 64, encoding="utf-8"))
             genesis_tx_output = TransactionOutput(value=100,
                                                   hash_pubkey_recipient="ef5c3fbad7c48451403b663e0dcd59828c1def5c")
             genesis_tx = Transaction(tx_input=genesis_tx_input, tx_output=genesis_tx_output)
@@ -103,25 +104,15 @@ class Block:
     # TODO Fix this
     def equal_blocks(self, other):
         if len(self.transactions) > 1 and len(other.transactions) > 1:
-            transactions_hash_self = []
-            for transaction in self.transactions[1:]:
-                transactions_hash_self.append(transaction.get_hash())
-
-            transactions_hash_other = []
-            for transaction in other.transactions[1:]:
-                transactions_hash_other.append(transaction.get_hash())
-
-            for transaction_hash in transactions_hash_self:
-                if transaction_hash not in transactions_hash_other:
-                    return False
-
-            return True
+            transaction_self = self.transactions[1]
+            transaction_other = other.transactions[1]
+            return transaction_self.get_hash() == transaction_other.get_hash()
 
         elif len(self.transactions) == 1 and len(other.transactions) == 1:
             transaction_self = self.transactions[0]
             transaction_other = other.transactions[0]
-
             return transaction_self.get_hash() == transaction_other.get_hash()
+
         else:
             return False
 
@@ -144,7 +135,6 @@ class Transaction:
                     return True
         return False
 
-    # TODO Verify it is working
     def is_valid(self, blockchain):
         """
         1. Find the prev tx
@@ -180,7 +170,6 @@ class Transaction:
         hash_object = RIPEMD160.new(self.tx_input.pk_spender.encode("utf-8"))
         hash_pk_spender = hash_object.hexdigest()
 
-        # TODO Fix hashes
         # Can't spend the money, it's not for you
         if hash_pk_spender != hash_output_prev_tx:
             return False
@@ -289,10 +278,11 @@ def mine_block(transaction, blockchain, miner_address):
                             prev_transaction = transaction
 
                 now = datetime.now()
-                print("Nonce found:", nonce, "[", now.strftime("%H:%M:%S"),"]")
+                print("Nonce found:", nonce, "[", now.strftime("%H:%M:%S"), "]")
                 result = dict()
                 result["new_block"] = new_block
-                result["gain"] = coinbase_tx.tx_output.value + (prev_transaction.tx_output.value - transaction.tx_output.value)
+                result["gain"] = coinbase_tx.tx_output.value + (
+                            prev_transaction.tx_output.value - transaction.tx_output.value)
                 result["status"] = True
                 return result
 
@@ -303,3 +293,5 @@ def mine_block(transaction, blockchain, miner_address):
         result["gain"] = 0
         result["status"] = False
         return result
+
+
