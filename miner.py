@@ -28,10 +28,7 @@ def update_blockchain_file(blockchain_info):
 
 def recv_timeout(the_socket, timeout=1):
     """
-    Tomado de https://www.binarytides.com/receive-full-data-with-the-recv-socket-function-in-python/
-    :param the_socket:
-    :param timeout:
-    :return:
+    Taken from: https://www.binarytides.com/receive-full-data-with-the-recv-socket-function-in-python/
     """
     # make socket non blocking
     the_socket.setblocking(0)
@@ -81,9 +78,6 @@ class Miner(object):
         while True:
             try:
                 data = self.receive_message()
-                # if not data:
-                #     print("==> Server disconnected. IFFF")
-                #     break
                 if data[0:1] == '\x11':
                     print('==> Got peers.')
                     update_peers(data[1:])
@@ -196,7 +190,6 @@ class Miner(object):
 
     def receive_message(self):
         try:
-            #data = self.socket.recv(self.byte_size)
             data = recv_timeout(self.socket)
             return data
         except KeyboardInterrupt:
@@ -207,6 +200,7 @@ class Miner(object):
         self.socket.sendall("q".encode('utf-8'))
         sys.exit()
 
+
 def app():
     while True:
         try:
@@ -216,8 +210,6 @@ def app():
                     client = Miner(peer)
                 except KeyboardInterrupt:
                     sys.exit(0)
-                #except Exception as e:
-                #    print(e.with_traceback())
 
         except KeyboardInterrupt:
             sys.exit(0)
