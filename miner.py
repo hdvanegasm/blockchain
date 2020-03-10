@@ -210,6 +210,8 @@ def app():
                     client = Miner(peer)
                 except KeyboardInterrupt:
                     sys.exit(0)
+                except Exception:
+                    pass
 
         except KeyboardInterrupt:
             sys.exit(0)
