@@ -12,6 +12,8 @@ In this repository you will find a basic implementation of a cryptocurrency usin
 
 * If you want to run a miner node, you must run *miner.py*. When a node broadcasts a transaction, the miner nodes will mine a new block with the coinbase and the new client's transaction, if the node finishes the mining process, it will broadcast the mined block to all the nodes and they will include the mined block if it is not already mined.
 
+***IMPORTANT:*** YOU MUST CREATE TWO FOLDERS INSIDE THE PROJECT AND CALL THEM *public_keys* and *private_keys*. THE IMPLEMENTATION FOR CREATING THIS FOLDERS WILL BE INCLUDED AS SOON AS POSSIBLE.
+
 ### Available commands:
 
 * **cmd_show_peers:** this command shows all the peers connected to the network in the format (IP, Port).
