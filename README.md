@@ -4,6 +4,8 @@ In this repository you will find a basic implementation of a cryptocurrency usin
 
 ## Instructions:
 
+* If you want to restore the project directory to a initial state, you must run *utilities/prepare_environment.py*. This file will delete all the public/private key pairs of the system and will delete the file that stores the complete blockchain.
+
 * If you want to execute a client, you must run *client.py* file. If there is not a sharing node, the first execution of this script will run a node that share all the information between nodes. If there is a sharing node, the other clients will connect to him and they will be able to share all the information in a broadcast way.
 
 * If a sharing node disconnects, another client will take his place.
