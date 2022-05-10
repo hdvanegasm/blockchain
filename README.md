@@ -1,6 +1,6 @@
-# Basic cryptocurrency implementation
+# Basic blockchain implementation
 
-In this repository you will find a basic implementation of a cryptocurrency using *Bitcoin: a peer-to-peer electronic cash system* and Bitcoin documentation as a basis.
+In this repository you will find a basic implementation of a blockchain using *Bitcoin: a peer-to-peer electronic cash system* and Bitcoin documentation as a basis.
 
 ## Instructions:
 
